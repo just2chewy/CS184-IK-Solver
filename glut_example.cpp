@@ -36,6 +36,8 @@ static struct timeval lastTime;
 
 using namespace std;
 
+//=)
+
 static double Mod(double a, double b)
 {
 	int result = static_cast<int>( a / b );
