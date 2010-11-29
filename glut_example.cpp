@@ -42,6 +42,7 @@ static double Mod(double a, double b)
 	return a - static_cast<double>( result ) * b;
 }
 
+//Degrees to radians
 static double SimplifyAngle(double angle) {
 	angle = Mod(angle, (2.0 * PI));
 	if( angle < -PI )
@@ -49,6 +50,10 @@ static double SimplifyAngle(double angle) {
     else if( angle > PI )
         angle -= (2.0 * PI);
     return angle;
+}
+
+static float radiansToDegrees(float radians) {
+	return radians * 180 / PI;
 }
 
 //****************************************************
@@ -60,12 +65,14 @@ public:
 	int w, h; // width and height
 };
 
+//Object angle members are always in degrees
+
 class BoneWorldSpace {
 public:
-	double start_x;        
+	double start_x;  //starting coords
     double start_y;
 	double start_z;
-	double end_x;
+	double end_x;	 //ending coordinates
 	double end_y;
 	double end_z;
     double angle;    // angle in world space
@@ -85,6 +92,8 @@ public:
 	}
 };
 
+//Input Bone class, makes the input file simpler
+
 class BonePrimitive {
 public:
 	double x;
@@ -100,12 +109,10 @@ public:
 	}
 };
 
+//Calculates angle between bones
+
 static float getAngle(BoneWorldSpace* bone_1, BoneWorldSpace* bone_2) {
 	return atan2(bone_2->end_y - bone_2->start_y, bone_2->end_x - bone_2->start_x) - atan2(bone_1->end_y - bone_1->start_y, bone_1->end_x - bone_1->start_x);
-}
-
-static float radiansToDegrees(float radians) {
-	return radians * 180 / PI;
 }
 
 //****************************************************
@@ -118,6 +125,24 @@ float ratio;
 float circle_radius;
 vector<BonePrimitive*> initial_bones;
 vector<BoneWorldSpace*> world_bones;
+
+float targetX = 5;
+float targetY = 0;
+float epsilon = 0.0001;
+bool movedBones = false;
+
+void rotateFromIndex(int index, float x_term, float y_term) {
+	int i;
+	for(i=index; i<(int)world_bones.size(); i++) {
+		BoneWorldSpace* bns = world_bones[i];
+		
+		bns->start_x = bns->start_x + x_term;
+		bns->end_x = bns->end_x + x_term;
+		
+		bns->start_y = bns->start_y + y_term;
+		bns->end_y = bns->end_y + y_term;
+	}
+}
 
 //Get command line args, create polygon objects
 void initScene(int argc, char *argv[]){
@@ -168,7 +193,7 @@ void initScene(int argc, char *argv[]){
 	inputFile.close();
 	
 	BonePrimitive* rootBonePrimitive = initial_bones[0];
-	BoneWorldSpace* root = new BoneWorldSpace(0, 0, 0, rootBonePrimitive->x, rootBonePrimitive->y, rootBonePrimitive->z, 90.0, 0, 0); 
+	BoneWorldSpace* root = new BoneWorldSpace(0, 0, 0, rootBonePrimitive->x, rootBonePrimitive->y, rootBonePrimitive->z, 90.0, cos(SimplifyAngle(90.0)), sin(SimplifyAngle(90.0))); 
 	BoneWorldSpace* prev = root;
 	world_bones.push_back(root);
 	
@@ -177,7 +202,9 @@ void initScene(int argc, char *argv[]){
 	for(i=1; i<(int)initial_bones.size(); i++) {
 		BonePrimitive* temp = initial_bones[i];
 		BoneWorldSpace* new_bone = new BoneWorldSpace(prev->end_x, prev->end_y, prev->end_z, temp->x + prev->end_x, temp->y + prev->end_y, temp->z + prev->end_z, 0, 0, 0);
-		new_bone->angle = radiansToDegrees(getAngle(prev, new_bone));
+		new_bone->angle = radiansToDegrees(getAngle(prev, new_bone)) + prev->angle;
+		new_bone->cosAngle = cos(new_bone->angle);
+		new_bone->sinAngle = sin(new_bone->angle);
 		world_bones.push_back(new_bone);
 		prev = new_bone;
 	}
@@ -212,15 +239,18 @@ void myDisplay() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);				// clear the color buffer
 	int i;
 	
+	//Draws bones
 	for(i=0; i<(int)world_bones.size(); i++) {
 		BoneWorldSpace* bns = world_bones[i];
 		glBegin(GL_LINES);
 			glVertex3f(bns->start_x, bns->start_y, bns->start_z);
 			glVertex3f(bns->end_x, bns->end_y, bns->end_z);			
 		glEnd();
-		printf("%d angle: %f\n", i, bns->angle);
+		
+		//printf("start = (%f, %f, %f), end = (%f, %f, %f)\n", bns->start_x, bns->start_y, bns->start_z, bns->end_x, bns->end_y, bns->end_z);
 	}
 	
+	//Draws circle
 	glBegin(GL_LINE_LOOP);
 	for(i=0; i<360; i++) {
 		glVertex2f(sin(SimplifyAngle(i)) * circle_radius, cos(SimplifyAngle(i)) * circle_radius);
@@ -229,6 +259,92 @@ void myDisplay() {
 	
 	glFlush();
 	glutSwapBuffers();					// swap buffers (we earlier set double buffer)
+}
+
+//Calculates how much the bones should move, based on code from: http://www.ryanjuckett.com/programming/animation/21-cyclic-coordinate-descent-in-2d?start=4
+
+void myFrameMove() {
+	float dt;
+	// Compute the time elapsed since the last time the scence is redrawn
+#ifdef _WIN32
+	DWORD currentTime = GetTickCount();
+	dt = (float)(currentTime - lastTime)*0.001f; 
+#else
+	timeval currentTime;
+	gettimeofday(&currentTime, NULL);
+	dt = (float)((currentTime.tv_sec - lastTime.tv_sec) + 1e-6*(currentTime.tv_usec - lastTime.tv_usec));
+#endif
+
+	// Update the position of the circle
+	static float totalTime = 0.0f;
+	
+	//Calculate movement of bones
+	float endX = world_bones[world_bones.size()-1]->end_x;
+	float endY = world_bones[world_bones.size()-1]->end_y;
+	totalTime += dt;
+	
+	int i;
+	
+	if(totalTime>0 && !movedBones) {
+		movedBones = true;
+		for(i=world_bones.size()-1; i>=0; i--) {
+			BoneWorldSpace* current_bone = world_bones[i];
+			 
+			// Get the vector from the current bone to the end effector position.
+			float curToEndX = endX - current_bone->start_x;
+			float curToEndY = endY - current_bone->start_y;
+			float curToEndMag = sqrt(powf(curToEndX, 2.0f) + powf(curToEndY, 2.0f));
+			//printf("curToEndMag: %f\n", curToEndMag);
+			
+			
+			// Get the vector from the current bone to the target position.
+			float curToTargX = targetX - current_bone->start_x;
+			float curToTargY = targetY - current_bone->start_y;
+			float curToTargMag = sqrt(powf(curToTargX, 2.0f) + powf(curToTargY, 2.0f));
+			//printf("curToTargMag: %f\n", curToTargMag);
+			
+			
+			float cosRotAngle;
+			float sinRotAngle;
+			float endTargetMag = curToEndMag * curToTargMag;
+			//printf("endTargetMag: %f\n", endTargetMag);
+			
+			if(endTargetMag <= epsilon) {
+				cosRotAngle = 1;
+				sinRotAngle = 0;
+			} else {
+				cosRotAngle = (curToEndX*curToTargX + curToEndY*curToTargY) / endTargetMag;
+				sinRotAngle = (curToEndX*curToTargY - curToEndY*curToTargX) / endTargetMag;
+			}
+			
+			// Clamp the cosine into range when computing the angle (might be out of range
+			// due to floating point error).
+			float rotAng = acos(max(-1.0f,min(1.0f,cosRotAngle)));
+			if( sinRotAngle < 0.0 ) {
+				rotAng = -rotAng;
+			}
+			
+			// Rotate the end effector position.
+			endX = world_bones[i]->start_x + cos(rotAng)*curToEndX - sin(rotAng)*curToEndY;
+			endY = world_bones[i]->start_y + sin(rotAng)*curToEndX + cos(rotAng)*curToEndY;
+			
+			//printf("cos: %f, sin: %f, endTargetMag: %f\n", cosRotAngle, sinRotAngle, endTargetMag);
+			//printf("endX: %f endY: %f rotAng: %f \n", endX, endY, rotAng);
+			
+			// Modify bone coords
+			world_bones[i]->end_x = world_bones[i]->start_x + cos(rotAng)*curToEndX - sin(rotAng)*curToEndY;
+			world_bones[i]->end_y = world_bones[i]->start_y + sin(rotAng)*curToEndX + cos(rotAng)*curToEndY;
+			rotateFromIndex(i+1, cos(rotAng)*curToEndX - sin(rotAng)*curToEndY, sin(rotAng)*curToEndX + cos(rotAng)*curToEndY);
+			
+			world_bones[i]->angle = world_bones[i]->angle + rotAng;
+		}
+	}
+	
+	// Accumulate the time since the program starts
+	
+	// Store the time
+	lastTime = currentTime;
+	glutPostRedisplay();
 }
 
 //****************************************************
@@ -278,31 +394,6 @@ void mySpecialKeyResponse(int key, int x, int y) {
 		myDisplay();
 		break;
 	}
-}
-
-void myFrameMove() {
-	float dt;
-	// Compute the time elapsed since the last time the scence is redrawn
-#ifdef _WIN32
-	DWORD currentTime = GetTickCount();
-	dt = (float)(currentTime - lastTime)*0.001f; 
-#else
-	timeval currentTime;
-	gettimeofday(&currentTime, NULL);
-	dt = (float)((currentTime.tv_sec - lastTime.tv_sec) + 1e-6*(currentTime.tv_usec - lastTime.tv_usec));
-#endif
-
-	// Update the position of the circle
-	static float totalTime = 0.0f;
-	
-	//Calculate movement of bones
-	
-	// Accumulate the time since the program starts
-	totalTime += dt;
-	
-	// Store the time
-	lastTime = currentTime;
-	glutPostRedisplay();
 }
 
 //****************************************************
