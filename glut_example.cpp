@@ -263,6 +263,8 @@ void myDisplay() {
 
 //Calculates how much the bones should move, based on code from: http://www.ryanjuckett.com/programming/animation/21-cyclic-coordinate-descent-in-2d?start=4
 
+//Kevin Tseng is my hero.
+
 void myFrameMove() {
 	float dt;
 	// Compute the time elapsed since the last time the scence is redrawn
