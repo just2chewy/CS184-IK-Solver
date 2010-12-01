@@ -131,16 +131,31 @@ float targetY = 0;
 float epsilon = 0.0001;
 bool movedBones = false;
 
-void rotateFromIndex(int index, float x_term, float y_term) {
+void rotateFromIndex(int index, float x_term, float y_term, float rotAngle) {
 	int i;
-	for(i=index; i<(int)world_bones.size(); i++) {
-		BoneWorldSpace* bns = world_bones[i];
+	BoneWorldSpace* prev = world_bones[index];
+	BoneWorldSpace* bns;
+	
+	//printf("xterm: %f, yterm: %f\n", x_term, y_term);
+	
+	for(i=index+1; i<(int)world_bones.size(); i++) {
+		bns = world_bones[i];
+		// float x_translated = bns->end_x - bns->start_x;
+		// float y_translated = bns->end_y - bns->start_y;
+		// float old_start_x = bns->start_x;
+		// float old_start_y = bns->start_y;
 		
-		bns->start_x = bns->start_x + x_term;
+		//bns->end_x = x_translated*cos(rotAngle) - y_translated*sin(rotAngle);
 		bns->end_x = bns->end_x + x_term;
+		//bns->end_x = x_term;
+		bns->start_x = prev->end_x;
 		
-		bns->start_y = bns->start_y + y_term;
+		
+		//bns->end_y = x_translated*sin(rotAngle) + y_translated*cos(rotAngle);
 		bns->end_y = bns->end_y + y_term;
+		//bns->end_y = y_term;
+		bns->start_y = prev->end_y;
+		prev = bns;
 	}
 }
 
@@ -287,7 +302,8 @@ void myFrameMove() {
 	
 	int i;
 	
-	if(totalTime>0 && !movedBones) {
+	if(totalTime>0.25f) {
+		totalTime = 0.0;
 		movedBones = true;
 		for(i=world_bones.size()-1; i>=0; i--) {
 			BoneWorldSpace* current_bone = world_bones[i];
@@ -296,7 +312,7 @@ void myFrameMove() {
 			float curToEndX = endX - current_bone->start_x;
 			float curToEndY = endY - current_bone->start_y;
 			float curToEndMag = sqrt(powf(curToEndX, 2.0f) + powf(curToEndY, 2.0f));
-			//printf("curToEndMag: %f\n", curToEndMag);
+			//printf("curToEndX: %f curToEndY: %f \n", curToEndX, curToEndY);
 			
 			
 			// Get the vector from the current bone to the target position.
@@ -326,19 +342,33 @@ void myFrameMove() {
 				rotAng = -rotAng;
 			}
 			
+			float old_end_x = world_bones[i]->end_x;
+			float old_end_y = world_bones[i]->end_y;
+			
 			// Rotate the end effector position.
-			endX = world_bones[i]->start_x + cos(rotAng)*curToEndX - sin(rotAng)*curToEndY;
-			endY = world_bones[i]->start_y + sin(rotAng)*curToEndX + cos(rotAng)*curToEndY;
+			endX = world_bones[i]->start_x + cosRotAngle*curToEndX - sinRotAngle*curToEndY;
+			endY = world_bones[i]->start_y + sinRotAngle*curToEndX + cosRotAngle*curToEndY;
 			
 			//printf("cos: %f, sin: %f, endTargetMag: %f\n", cosRotAngle, sinRotAngle, endTargetMag);
-			//printf("endX: %f endY: %f rotAng: %f \n", endX, endY, rotAng);
+			//printf("endX: %f endY: %f rotAng: %f \n", endX, endY, radiansToDegrees(rotAng));
 			
 			// Modify bone coords
-			world_bones[i]->end_x = world_bones[i]->start_x + cos(rotAng)*curToEndX - sin(rotAng)*curToEndY;
-			world_bones[i]->end_y = world_bones[i]->start_y + sin(rotAng)*curToEndX + cos(rotAng)*curToEndY;
-			rotateFromIndex(i+1, cos(rotAng)*curToEndX - sin(rotAng)*curToEndY, sin(rotAng)*curToEndX + cos(rotAng)*curToEndY);
+			//printf("before: (%f, %f)\n", world_bones[i]->end_x, world_bones[i]->end_y);
+			
+			float x_translated = current_bone->end_x - current_bone->start_x;
+			float y_translated = current_bone->end_y - current_bone->start_y;
+			
+			world_bones[i]->end_x = world_bones[i]->start_x + x_translated*cos(rotAng) - y_translated*sin(rotAng);
+			world_bones[i]->end_y = world_bones[i]->start_y + x_translated*sin(rotAng) + y_translated*cos(rotAng);
+			
+			float x_diff = world_bones[i]->end_x - old_end_x;
+			float y_diff = world_bones[i]->end_y - old_end_y;
+			//printf("after: (%f, %f)\n", world_bones[i]->end_x, world_bones[i]->end_y);
 			
 			world_bones[i]->angle = world_bones[i]->angle + rotAng;
+			
+			rotateFromIndex(i, x_diff, y_diff, rotAng);
+			//rotateFromIndex(i+1, x_diff, y_diff);
 		}
 	}
 	
