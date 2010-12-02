@@ -132,6 +132,7 @@ float targetX = 5;
 float targetY = 0;
 float epsilon = 0.0001;
 bool movedBones = false;
+float targetAngle = 0;
 
 void rotateFromIndex(int index, float x_term, float y_term, float rotAngle) {
 	int i;
@@ -296,17 +297,29 @@ void myFrameMove() {
 
 	// Update the position of the circle
 	static float totalTime = 0.0f;
+	static float targetTime = 0.0f;
 	
 	//Calculate movement of bones
 	float endX = world_bones[world_bones.size()-1]->end_x;
 	float endY = world_bones[world_bones.size()-1]->end_y;
 	totalTime += dt;
+	targetTime += dt;
 	
 	int i;
 	
-	if(totalTime>0.25f) {
+	if(targetTime > 0.3f) {
+		targetX = circle_radius*cos(SimplifyAngle(targetAngle));
+		targetY = circle_radius*sin(SimplifyAngle(targetAngle));
+		targetAngle += 0.1;
+		if(targetAngle>360) {
+			targetAngle = 0;
+		}
+		targetTime = 0;
+		//printf("Target x:%f, target y: %f\n", targetX, targetY);
+	}
+	
+	if(!movedBones && totalTime>0.1f) {
 		totalTime = 0.0;
-		movedBones = true;
 		for(i=world_bones.size()-1; i>=0; i--) {
 			BoneWorldSpace* current_bone = world_bones[i];
 			 
@@ -330,6 +343,7 @@ void myFrameMove() {
 			//printf("endTargetMag: %f\n", endTargetMag);
 			
 			if(endTargetMag <= epsilon) {
+				movedBones = true;
 				cosRotAngle = 1;
 				sinRotAngle = 0;
 			} else {
