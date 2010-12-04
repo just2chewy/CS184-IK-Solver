@@ -318,8 +318,8 @@ void myFrameMove() {
 #endif
 
 	// Update the position of the circle
-	static float totalTime = 0.0f;
-	static float targetTime = 0.0f;
+	static float totalTime = 0.0f; //time difference since we last moved bones
+	static float targetTime = 0.0f; //time difference since we last moved target
 	
 	//Calculate movement of bones
 	float endX = world_bones[world_bones.size()-1]->end_x;
@@ -330,11 +330,11 @@ void myFrameMove() {
 	
 	int i;
 	
-	
-	if(targetTime > 0.3f) {
+	//Change target location
+	if(targetTime > 0.1f) {
 		targetX = circle_radius*cos(SimplifyAngle(targetAngle));
 		targetY = circle_radius*sin(SimplifyAngle(targetAngle));
-		targetAngle += 0.1;
+		targetAngle += 0.01;
 		if(targetAngle>360) {
 			targetAngle = 0;
 		}
@@ -537,11 +537,8 @@ void myFrameMove() {
 			world_bones[i]->angle = world_bones[i]->angle + rotAngY;
 			
 			rotateFromIndex(i, x_diff, y_diff, z_diff, rotAng);
-			
 		}
 	}
-	
-	// Accumulate the time since the program starts
 	
 	// Store the time
 	lastTime = currentTime;
