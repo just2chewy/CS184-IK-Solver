@@ -45,7 +45,7 @@ static double Mod(double a, double b)
 }
 
 //Degrees to radians
-static double SimplifyAngle(double angle) {
+static double degreesToRadians(double angle) {
 	angle = Mod(angle, (2.0 * PI));
 	if( angle < -PI )
         angle += (2.0 * PI);
@@ -231,7 +231,7 @@ void initScene(int argc, char *argv[]){
 	inputFile.close();
 	
 	BonePrimitive* rootBonePrimitive = initial_bones[0];
-	BoneWorldSpace* root = new BoneWorldSpace(0, 0, 0, rootBonePrimitive->x, rootBonePrimitive->y, rootBonePrimitive->z, 90.0, cos(SimplifyAngle(90.0)), sin(SimplifyAngle(90.0)), rootBonePrimitive->r, rootBonePrimitive->g, rootBonePrimitive->b); 
+	BoneWorldSpace* root = new BoneWorldSpace(0, 0, 0, rootBonePrimitive->x, rootBonePrimitive->y, rootBonePrimitive->z, 90.0, cos(degreesToRadians(90.0)), sin(degreesToRadians(90.0)), rootBonePrimitive->r, rootBonePrimitive->g, rootBonePrimitive->b); 
 	BoneWorldSpace* prev = root;
 	world_bones.push_back(root);
 	
@@ -293,7 +293,7 @@ void myDisplay() {
 	glColor3f(205.0f/255.0f, 190.0f/255.0f, 112.0f/255.0f);
 	glBegin(GL_LINE_LOOP);
 	for(i=0; i<360; i++) {
-		glVertex3f(sin(SimplifyAngle(i)) * circle_radius, cos(SimplifyAngle(i)) * circle_radius, targetZ);
+		glVertex3f(sin(degreesToRadians(i)) * circle_radius, cos(degreesToRadians(i)) * circle_radius, targetZ);
 	}
 	glEnd();
 	
@@ -332,8 +332,8 @@ void myFrameMove() {
 	
 	//Change target location
 	if(targetTime > 0.1f) {
-		targetX = circle_radius*cos(SimplifyAngle(targetAngle));
-		targetY = circle_radius*sin(SimplifyAngle(targetAngle));
+		targetX = circle_radius*cos(degreesToRadians(targetAngle));
+		targetY = circle_radius*sin(degreesToRadians(targetAngle));
 		targetAngle += 0.01;
 		if(targetAngle>360) {
 			targetAngle = 0;
