@@ -137,6 +137,9 @@ float camera_x=0.0f, camera_y=0.0f, camera_z=10.0f;
 float lx=0.0f, ly=0.0f, lz=-1.0f;
 float ratio;
 float circle_radius;
+float ellipse_a, ellipse_b;
+float eightParam;
+int shapeIndex;
 vector<BonePrimitive*> initial_bones;
 vector<BoneWorldSpace*> world_bones;
 
@@ -186,7 +189,7 @@ void initScene(int argc, char *argv[]){
 	}
 	
 	char* fileName = argv[1];
-	bool firstLine = true;
+	char* shapeName = new char[10];
 	int number = 0;
 	float currentX, currentY, currentZ;
 	float currentNumber;
@@ -195,38 +198,53 @@ void initScene(int argc, char *argv[]){
 	ifstream inputFile;
 	inputFile.open(fileName);
 
+	inputFile >> shapeName;
+	if (!strcmp(shapeName, "circle"))
+	{
+		shapeIndex = 0;
+		inputFile >> currentNumber;
+		circle_radius = currentNumber;
+	}
+	else if (!strcmp(shapeName, "ellipse"))
+	{
+		shapeIndex = 1;
+		inputFile >> currentNumber;
+		ellipse_a = currentNumber;
+		inputFile >> currentNumber;
+		ellipse_b = currentNumber;
+	}
+	else if (!strcmp(shapeName, "eight"))
+	{
+		shapeIndex = 2;
+		inputFile >> currentNumber;
+		eightParam = currentNumber;
+	}
+	delete shapeName;
+
 	while (inputFile >> currentNumber)
 	{
-		if (firstLine)
-		{
-			circle_radius = (int) currentNumber;
-			firstLine = false;
+		switch (number % 6) {
+		case 0:
+			currentX = currentNumber;
+			break;
+		case 1:
+			currentY = currentNumber;
+			break;
+		case 2:
+			currentZ = currentNumber;
+			break;
+		case 3:
+			currentR = currentNumber;
+			break;
+		case 4:
+			currentG = currentNumber;
+			break;
+		default:
+			currentB = currentNumber;
+			initial_bones.push_back(new BonePrimitive(currentX, currentY, currentZ, 0, currentR, currentG, currentB));
+			break;
 		}
-		else
-		{
-			switch (number % 6) {
-			case 0:
-				currentX = currentNumber;
-				break;
-			case 1:
-				currentY = currentNumber;
-				break;
-			case 2:
-				currentZ = currentNumber;
-				break;
-			case 3:
-				currentR = currentNumber;
-				break;
-			case 4:
-				currentG = currentNumber;
-				break;
-			default:
-				currentB = currentNumber;
-				initial_bones.push_back(new BonePrimitive(currentX, currentY, currentZ, 0, currentR, currentG, currentB));
-				break;
-			}
-			number++;
-		}
+		number++;
 	}
 	inputFile.close();
 	
@@ -289,11 +307,31 @@ void myDisplay() {
 		//printf("start = (%f, %f, %f), end = (%f, %f, %f)\n", bns->start_x, bns->start_y, bns->start_z, bns->end_x, bns->end_y, bns->end_z);
 	}
 	
-	//Draws circle
+	//Draws shape
 	glColor3f(205.0f/255.0f, 190.0f/255.0f, 112.0f/255.0f);
 	glBegin(GL_LINE_LOOP);
-	for(i=0; i<360; i++) {
-		glVertex3f(sin(degreesToRadians(i)) * circle_radius, cos(degreesToRadians(i)) * circle_radius, targetZ);
+
+	// Circle
+	if (shapeIndex == 0)
+	{
+		for(i=0; i<360; i++) {
+			glVertex3f(cos(degreesToRadians(i)) * circle_radius, sin(degreesToRadians(i)) * circle_radius, targetZ);
+		}
+	}
+	// Ellipse
+	else if (shapeIndex == 1)
+	{
+		for(i=0; i<360; i++) {
+			glVertex3f(cos(degreesToRadians(i)) * ellipse_a, sin(degreesToRadians(i)) * ellipse_b, targetZ);
+		}
+	}
+	// Figure-Eight
+	else if (shapeIndex == 2)
+	{
+		for(i=0; i<360; i++) {
+			float denominator = 1 + powf(sin(degreesToRadians(i)), 2.0);
+			glVertex3f(eightParam * cos(degreesToRadians(i)) / denominator, eightParam * cos(degreesToRadians(i)) * sin(degreesToRadians(i)) / denominator, targetZ);
+		}
 	}
 	glEnd();
 	
@@ -331,9 +369,26 @@ void myFrameMove() {
 	int i;
 	
 	//Change target location
-	if(targetTime > 0.1f) {
-		targetX = circle_radius*cos(degreesToRadians(targetAngle));
-		targetY = circle_radius*sin(degreesToRadians(targetAngle));
+
+	if (targetTime > 0.1f)
+	{
+		// Circle
+		if(shapeIndex == 0) {
+			targetX = circle_radius*cos(degreesToRadians(targetAngle));
+			targetY = circle_radius*sin(degreesToRadians(targetAngle));
+		}
+		// Ellipse
+		else if (shapeIndex == 1) {
+			targetX = ellipse_a*cos(degreesToRadians(targetAngle));
+			targetY = ellipse_b*sin(degreesToRadians(targetAngle));
+		}
+		// Eight
+		else if (shapeIndex == 2) {
+			float denominator = 1 + powf(sin(degreesToRadians(targetAngle)), 2.0);
+			targetX = eightParam * cos(degreesToRadians(targetAngle)) / denominator;
+			targetY = eightParam * cos(degreesToRadians(targetAngle)) * sin(degreesToRadians(targetAngle)) / denominator;
+		}
+
 		targetAngle += 0.01;
 		if(targetAngle>360) {
 			targetAngle = 0;
@@ -341,7 +396,7 @@ void myFrameMove() {
 		targetTime = 0;
 		//printf("Target x:%f, target y: %f\n", targetX, targetY);
 	}
-	
+
 	if(!movedBones && totalTime>0.1f) {
 		totalTime = 0.0;
 		for(i=world_bones.size()-1; i>=0; i--) {
