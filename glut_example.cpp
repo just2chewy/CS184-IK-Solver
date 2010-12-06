@@ -61,7 +61,6 @@ static float radiansToDegrees(float radians) {
 //****************************************************
 // Some Classes
 //****************************************************
-
 class Viewport {
 public:
 	int w, h; // width and height
@@ -307,33 +306,30 @@ void myDisplay() {
 		//printf("start = (%f, %f, %f), end = (%f, %f, %f)\n", bns->start_x, bns->start_y, bns->start_z, bns->end_x, bns->end_y, bns->end_z);
 	}
 	
-	//Draws shape
 	glColor3f(205.0f/255.0f, 190.0f/255.0f, 112.0f/255.0f);
-	glBegin(GL_LINE_LOOP);
-
-	// Circle
-	if (shapeIndex == 0)
-	{
-		for(i=0; i<360; i++) {
-			glVertex3f(cos(degreesToRadians(i)) * circle_radius, sin(degreesToRadians(i)) * circle_radius, targetZ);
-		}
+	float ang = 0;
+	float path_x, path_y;
+	while(ang<=360) {
+		glBegin(GL_POINTS);
+			if(shapeIndex == 0) {
+				path_x = circle_radius*cos(degreesToRadians(ang));
+				path_y = circle_radius*sin(degreesToRadians(ang));
+			}
+			// Ellipse
+			else if (shapeIndex == 1) {
+				path_x = ellipse_a*cos(degreesToRadians(ang));
+				path_y = ellipse_b*sin(degreesToRadians(ang));
+			}
+			// Eight
+			else if (shapeIndex == 2) {
+				float denominator = 1 + powf(sin(degreesToRadians(ang)), 2.0);
+				path_x = eightParam * cos(degreesToRadians(ang)) / denominator;
+				path_y = eightParam * cos(degreesToRadians(ang)) * sin(degreesToRadians(ang)) / denominator;
+			}
+			glVertex3f(path_x, path_y, targetZ);
+		glEnd();
+		ang += 0.01;
 	}
-	// Ellipse
-	else if (shapeIndex == 1)
-	{
-		for(i=0; i<360; i++) {
-			glVertex3f(cos(degreesToRadians(i)) * ellipse_a, sin(degreesToRadians(i)) * ellipse_b, targetZ);
-		}
-	}
-	// Figure-Eight
-	else if (shapeIndex == 2)
-	{
-		for(i=0; i<360; i++) {
-			float denominator = 1 + powf(sin(degreesToRadians(i)), 2.0);
-			glVertex3f(eightParam * cos(degreesToRadians(i)) / denominator, eightParam * cos(degreesToRadians(i)) * sin(degreesToRadians(i)) / denominator, targetZ);
-		}
-	}
-	glEnd();
 	
 	glFlush();
 	glutSwapBuffers();					// swap buffers (we earlier set double buffer)
@@ -397,7 +393,7 @@ void myFrameMove() {
 		//printf("Target x:%f, target y: %f\n", targetX, targetY);
 	}
 
-	if(!movedBones && totalTime>0.1f) {
+	if(totalTime>0.05f) {
 		totalTime = 0.0;
 		for(i=world_bones.size()-1; i>=0; i--) {
 			BoneWorldSpace* current_bone = world_bones[i];
