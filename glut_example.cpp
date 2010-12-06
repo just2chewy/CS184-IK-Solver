@@ -139,12 +139,13 @@ float circle_radius;
 float ellipse_a, ellipse_b;
 float eightParam;
 int shapeIndex;
+float x_translation, y_translation;
 vector<BonePrimitive*> initial_bones;
 vector<BoneWorldSpace*> world_bones;
 
-float targetX = 5;
+float targetX = 0;
 float targetY = 0;
-float targetZ = -2;
+float targetZ = 0;
 
 float epsilon = 0.0001;
 bool movedBones = false;
@@ -196,6 +197,13 @@ void initScene(int argc, char *argv[]){
 	
 	ifstream inputFile;
 	inputFile.open(fileName);
+
+	inputFile >> currentNumber;
+	x_translation = currentNumber;
+	inputFile >> currentNumber;
+	y_translation = currentNumber;
+	inputFile >> currentNumber;
+	targetZ = currentNumber;
 
 	inputFile >> shapeName;
 	if (!strcmp(shapeName, "circle"))
@@ -326,6 +334,8 @@ void myDisplay() {
 				path_x = eightParam * cos(degreesToRadians(ang)) / denominator;
 				path_y = eightParam * cos(degreesToRadians(ang)) * sin(degreesToRadians(ang)) / denominator;
 			}
+			path_x += x_translation;
+			path_y += y_translation;
 			glVertex3f(path_x, path_y, targetZ);
 		glEnd();
 		ang += 0.01;
@@ -390,6 +400,8 @@ void myFrameMove() {
 			targetAngle = 0;
 		}
 		targetTime = 0;
+		targetX += x_translation;
+		targetY += y_translation;
 		//printf("Target x:%f, target y: %f\n", targetX, targetY);
 	}
 
