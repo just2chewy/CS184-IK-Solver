@@ -368,15 +368,51 @@ void myReshape(int w, int h) {
 //***************************************************
 void myDisplay() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);				// clear the color buffer
-	int i;
+	int i, j;
+	
+	float theta = 0;
+	float beta = 0;
+	float thetaRadians, betaRadians;
+	float sphere_param = 10;
+	float cone_width = 0.2;
+	float num_triangles = 20;
+	float cone_angle=0;
+	float new_x, new_y, new_z;
 	
 	//Draws bones
 	for(i=0; i<(int)world_bones.size(); i++) {
 		BoneWorldSpace* bns = world_bones[i];
 		glColor3f(bns->r, bns->g, bns->b);
-		glBegin(GL_LINES);
-			glVertex3f(bns->start_x, bns->start_y, bns->start_z);
-			glVertex3f(bns->end_x, bns->end_y, bns->end_z);			
+		
+		//Draw cones
+		// glBegin(GL_LINES);
+			// glVertex3f(bns->start_x, bns->start_y, bns->start_z);
+			// glVertex3f(bns->end_x, bns->end_y, bns->end_z);			
+		// glEnd();
+		
+		glBegin(GL_TRIANGLE_FAN);
+			glVertex3f(bns->end_x, bns->end_y, bns->end_z);
+			for(j=0; j<num_triangles; j++) {
+			
+				for(theta=-90; theta<=90; theta+=360/num_triangles) {
+					for(beta=-180; beta<=180; beta+=360/num_triangles) {
+						thetaRadians = degreesToRadians(theta);
+						betaRadians = degreesToRadians(beta);
+						glVertex3f(bns->start_x+cos(thetaRadians)*cos(betaRadians)*cone_width, bns->start_y+cos(thetaRadians)*sin(betaRadians)*cone_width, bns->start_z+sin(thetaRadians)*cone_width);
+					}
+				}
+			}
+		glEnd();
+		
+		glColor3f(1.0, 1.0, 1.0);
+		glBegin(GL_POINTS);
+			for(theta=-90; theta<=90; theta+=10) {
+				for(beta=-180; beta<=180; beta+=10) {
+					thetaRadians = degreesToRadians(theta);
+					betaRadians = degreesToRadians(beta);
+					glVertex3f(targetX+cos(thetaRadians)*cos(betaRadians)/sphere_param, targetY+cos(thetaRadians)*sin(betaRadians)/sphere_param, targetZ+sin(thetaRadians)/sphere_param);
+				}
+			}
 		glEnd();
 		
 		//printf("start = (%f, %f, %f), end = (%f, %f, %f)\n", bns->start_x, bns->start_y, bns->start_z, bns->end_x, bns->end_y, bns->end_z);
@@ -481,7 +517,7 @@ void myFrameMove() {
 	
 	//Change target location
 
-	if (targetTime > 0.1f)
+	if (targetTime > 0.05f)
 	{
 		// Circle
 		if(shapeIndex == 0) {
@@ -548,7 +584,7 @@ void myFrameMove() {
 		targetZ += z_translation;
 	}
 
-	if(totalTime>0.05f) {
+	if(totalTime>0.01f) {
 		totalTime = 0.0;
 		for(i=world_bones.size()-1; i>=0; i--) {
 			BoneWorldSpace* current_bone = world_bones[i];
