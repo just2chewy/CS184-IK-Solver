@@ -546,7 +546,6 @@ void myFrameMove() {
 			currentTargetX += currentSlope->x * alpha;
 			currentTargetY += currentSlope->y * alpha;
 			currentTargetZ += currentSlope->z * alpha;
-			cout << "X: " << targetX << "\tY: " << targetY << endl;
 		}
 
 		currentIterationIndex++;
