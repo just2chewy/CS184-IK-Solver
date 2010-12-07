@@ -36,8 +36,6 @@ static struct timeval lastTime;
 
 using namespace std;
 
-//=)
-
 static double Mod(double a, double b)
 {
 	int result = static_cast<int>( a / b );
@@ -98,6 +96,34 @@ public:
 		b = new_b;
 	}
 };
+class Point {
+public:
+	float x, y, z;
+	Point(float _x, float _y, float _z)
+	{
+		x = _x;
+		y = _y;
+		z = _z;
+	}
+};
+class Points {
+private:
+	int currentIndex;
+public:
+	Point** myPoints;
+	int numPoints;
+	Points(int _numPoints)
+	{
+		numPoints = _numPoints;
+		myPoints = new Point*[_numPoints];
+		currentIndex = 0;
+	}
+	void Add(float x, float y, float z)
+	{
+		myPoints[currentIndex] = new Point(x, y, z);
+		currentIndex++;
+	}
+};
 
 //Input Bone class, makes the input file simpler
 
@@ -139,9 +165,20 @@ float circle_radius;
 float ellipse_a, ellipse_b;
 float eightParam;
 int shapeIndex;
-float x_translation, y_translation;
+float x_translation, y_translation, z_translation;
+float alpha = 0.05;
+Points* points;
 vector<BonePrimitive*> initial_bones;
 vector<BoneWorldSpace*> world_bones;
+
+// For arbitrary number of points
+int currentPointsIndex = 0;
+int currentNumSteps;
+int currentIterationIndex = 0;
+float currentTargetX;
+float currentTargetY;
+float currentTargetZ;
+Point* currentSlope;
 
 float targetX = 0;
 float targetY = 0;
@@ -191,8 +228,8 @@ void initScene(int argc, char *argv[]){
 	char* fileName = argv[1];
 	char* shapeName = new char[10];
 	int number = 0;
-	float currentX, currentY, currentZ;
 	float currentNumber;
+	float currentX, currentY, currentZ;
 	float currentR, currentG, currentB;
 	
 	ifstream inputFile;
@@ -203,7 +240,7 @@ void initScene(int argc, char *argv[]){
 	inputFile >> currentNumber;
 	y_translation = currentNumber;
 	inputFile >> currentNumber;
-	targetZ = currentNumber;
+	z_translation = currentNumber;
 
 	inputFile >> shapeName;
 	if (!strcmp(shapeName, "circle"))
@@ -225,6 +262,21 @@ void initScene(int argc, char *argv[]){
 		shapeIndex = 2;
 		inputFile >> currentNumber;
 		eightParam = currentNumber;
+	}
+	else if (!strcmp(shapeName, "points"))
+	{
+		int pointsNumber;
+		shapeIndex = 3;
+		inputFile >> pointsNumber;
+		points = new Points(pointsNumber);
+		for (int i = 0; i < pointsNumber; i++)
+		{
+			float x, y, z;
+			inputFile >> x;
+			inputFile >> y;
+			inputFile >> z;
+			points->Add(x, y, z);
+		}
 	}
 	delete shapeName;
 
@@ -271,6 +323,22 @@ void initScene(int argc, char *argv[]){
 		world_bones.push_back(new_bone);
 		prev = new_bone;
 	}
+	if (shapeIndex == 3)
+	{
+		Point* A = points->myPoints[0];
+		Point* B = points->myPoints[1];
+		currentPointsIndex = 0;
+		currentIterationIndex = 0;
+		currentTargetX = A->x;
+		currentTargetY = A->y;
+		currentTargetZ = A->z;
+		float xDiff = B->x - A->x;
+		float yDiff = B->y - A->y;
+		float zDiff = B->z - A->z;
+		float normalize = sqrt(powf(xDiff, 2.0) + powf(yDiff, 2.0) + powf(zDiff, 2.0));
+		currentSlope = new Point(xDiff / normalize, yDiff / normalize, zDiff / normalize);
+		currentNumSteps = normalize / alpha;
+	}
 }
 
 //****************************************************
@@ -316,38 +384,75 @@ void myDisplay() {
 	
 	glColor3f(205.0f/255.0f, 190.0f/255.0f, 112.0f/255.0f);
 	float ang = 0;
-	float path_x, path_y;
-	while(ang<=360) {
-		glBegin(GL_POINTS);
-			if(shapeIndex == 0) {
-				path_x = circle_radius*cos(degreesToRadians(ang));
-				path_y = circle_radius*sin(degreesToRadians(ang));
-			}
-			// Ellipse
-			else if (shapeIndex == 1) {
-				path_x = ellipse_a*cos(degreesToRadians(ang));
-				path_y = ellipse_b*sin(degreesToRadians(ang));
-			}
-			// Eight
-			else if (shapeIndex == 2) {
-				float denominator = 1 + powf(sin(degreesToRadians(ang)), 2.0);
-				path_x = eightParam * cos(degreesToRadians(ang)) / denominator;
-				path_y = eightParam * cos(degreesToRadians(ang)) * sin(degreesToRadians(ang)) / denominator;
-			}
-			path_x += x_translation;
-			path_y += y_translation;
-			glVertex3f(path_x, path_y, targetZ);
-		glEnd();
-		ang += 0.01;
+	float path_x, path_y, path_z;
+	if (shapeIndex != 3)
+	{
+		while(ang<=360) {
+			glBegin(GL_POINTS);
+				path_z = 0;
+				if(shapeIndex == 0) {
+					path_x = circle_radius*cos(degreesToRadians(ang));
+					path_y = circle_radius*sin(degreesToRadians(ang));
+				}
+				// Ellipse
+				else if (shapeIndex == 1) {
+					path_x = ellipse_a*cos(degreesToRadians(ang));
+					path_y = ellipse_b*sin(degreesToRadians(ang));
+				}
+				// Eight
+				else if (shapeIndex == 2) {
+					float denominator = 1 + powf(sin(degreesToRadians(ang)), 2.0);
+					path_x = eightParam * cos(degreesToRadians(ang)) / denominator;
+					path_y = eightParam * cos(degreesToRadians(ang)) * sin(degreesToRadians(ang)) / denominator;
+				}
+				path_x += x_translation;
+				path_y += y_translation;
+				path_z += z_translation;
+				glVertex3f(path_x, path_y, targetZ);
+			glEnd();
+			ang += 0.01;
+		}
 	}
-	
+	else
+	{
+		int numPoints = points->numPoints;
+		for (int i = 0; i < numPoints; i++)
+		{
+			// Get next two points
+			Point* A = points->myPoints[i % numPoints];
+			Point* B = points->myPoints[(i + 1) % numPoints];
+
+			// Calculate slope and normalization constants
+			float xDiff = B->x - A->x;
+			float yDiff = B->y - A->y;
+			float zDiff = B->z - A->z;
+			float normalize = sqrt(powf(xDiff, 2.0) + powf(yDiff, 2.0) + powf(zDiff, 2.0));
+			Point* slope = new Point(xDiff / normalize, yDiff / normalize, zDiff / normalize);
+
+			// Calculate how many points there will be and initialize current point
+			float numSteps = normalize / alpha;
+			float currentX = A->x;
+			float currentY = A->y;
+			float currentZ = A->z;
+
+			// Draw Points
+			for (int j = 0; j < numSteps; j++)
+			{
+				glBegin(GL_POINTS);
+				glVertex3f(currentX + x_translation, currentY + y_translation, currentZ + z_translation);
+				glEnd();
+				currentX += slope->x * alpha;
+				currentY += slope->y * alpha;
+				currentZ += slope->z * alpha;
+			}
+			delete slope;
+		}
+	}
 	glFlush();
 	glutSwapBuffers();					// swap buffers (we earlier set double buffer)
 }
 
 //Calculates how much the bones should move, based on code from: http://www.ryanjuckett.com/programming/animation/21-cyclic-coordinate-descent-in-2d?start=4
-
-//Kevin Tseng is my hero.
 
 void myFrameMove() {
 	float dt;
@@ -382,17 +487,55 @@ void myFrameMove() {
 		if(shapeIndex == 0) {
 			targetX = circle_radius*cos(degreesToRadians(targetAngle));
 			targetY = circle_radius*sin(degreesToRadians(targetAngle));
+			targetZ = 0;
 		}
 		// Ellipse
 		else if (shapeIndex == 1) {
 			targetX = ellipse_a*cos(degreesToRadians(targetAngle));
 			targetY = ellipse_b*sin(degreesToRadians(targetAngle));
+			targetZ = 0;
 		}
 		// Eight
 		else if (shapeIndex == 2) {
 			float denominator = 1 + powf(sin(degreesToRadians(targetAngle)), 2.0);
 			targetX = eightParam * cos(degreesToRadians(targetAngle)) / denominator;
 			targetY = eightParam * cos(degreesToRadians(targetAngle)) * sin(degreesToRadians(targetAngle)) / denominator;
+			targetZ = 0;
+		}
+		// Points
+		else if (shapeIndex == 3) {
+			targetX = currentTargetX;
+			targetY = currentTargetY;
+			targetZ = currentTargetZ;
+			currentTargetX += currentSlope->x * alpha;
+			currentTargetY += currentSlope->y * alpha;
+			currentTargetZ += currentSlope->z * alpha;
+			cout << "X: " << targetX << "\tY: " << targetY << endl;
+		}
+
+		currentIterationIndex++;
+		if (shapeIndex == 3 && currentIterationIndex == currentNumSteps)
+		{
+			currentPointsIndex = (currentPointsIndex + 1) % points->numPoints;
+			currentIterationIndex = 0;
+			delete currentSlope;
+
+			// Get next two points
+			Point* A = points->myPoints[currentPointsIndex];
+			Point* B = points->myPoints[(currentPointsIndex + 1) % points->numPoints];
+
+			// Calculate slope and normalization constants
+			float xDiff = B->x - A->x;
+			float yDiff = B->y - A->y;
+			float zDiff = B->z - A->z;
+			float normalize = sqrt(powf(xDiff, 2.0) + powf(yDiff, 2.0) + powf(zDiff, 2.0));
+			currentSlope = new Point(xDiff / normalize, yDiff / normalize, zDiff / normalize);
+
+			// Calculate how many points there will be and initialize current point
+			currentNumSteps = normalize / alpha;
+			currentTargetX = A->x;
+			currentTargetY = A->y;
+			currentTargetZ = A->z;
 		}
 
 		targetAngle += 0.01;
@@ -402,7 +545,7 @@ void myFrameMove() {
 		targetTime = 0;
 		targetX += x_translation;
 		targetY += y_translation;
-		//printf("Target x:%f, target y: %f\n", targetX, targetY);
+		targetZ += z_translation;
 	}
 
 	if(totalTime>0.05f) {
@@ -687,7 +830,7 @@ int main(int argc, char *argv[]) {
   
   	glutDisplayFunc(myDisplay);					// function to run when its time to draw something
   	glutReshapeFunc(myReshape);					// function to run when the window gets resized
-  	glutIdleFunc(myFrameMove);			
+  	glutIdleFunc(myFrameMove);
 	
  	glutKeyboardFunc(myKeyResponse);
 
