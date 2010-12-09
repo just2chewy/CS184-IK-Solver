@@ -399,21 +399,20 @@ void myDisplay() {
 				}
 			}
 		glEnd();
-		
-		if(should_move) {
-			glColor3f(1.0, 1.0, 1.0);
-			glBegin(GL_POINTS);
-				for(theta=-90; theta<=90; theta+=10) {
-					for(beta=-180; beta<=180; beta+=10) {
-						thetaRadians = degreesToRadians(theta);
-						betaRadians = degreesToRadians(beta);
-						glVertex3f(targetX+cos(thetaRadians)*cos(betaRadians)/sphere_param, targetY+cos(thetaRadians)*sin(betaRadians)/sphere_param, targetZ+sin(thetaRadians)/sphere_param);
-					}
-				}
-			glEnd();
-		}
-		
 		//printf("start = (%f, %f, %f), end = (%f, %f, %f)\n", bns->start_x, bns->start_y, bns->start_z, bns->end_x, bns->end_y, bns->end_z);
+	}
+	
+	if(should_move) {
+		glColor3f(1.0, 1.0, 1.0);
+		glBegin(GL_POINTS);
+			for(theta=-90; theta<=90; theta+=10) {
+				for(beta=-180; beta<=180; beta+=10) {
+					thetaRadians = degreesToRadians(theta);
+					betaRadians = degreesToRadians(beta);
+					glVertex3f(targetX+cos(thetaRadians)*cos(betaRadians)/sphere_param, targetY+cos(thetaRadians)*sin(betaRadians)/sphere_param, targetZ+sin(thetaRadians)/sphere_param);
+				}
+			}
+		glEnd();
 	}
 	
 	glColor3f(205.0f/255.0f, 190.0f/255.0f, 112.0f/255.0f);
