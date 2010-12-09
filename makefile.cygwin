@@ -47,7 +47,7 @@ LINKER	      = g++
 OBJ           = $(CPPSRCS:.cpp=.o) 
 
 # Define name of target executable
-PROGRAM	      = glut_example.exe
+PROGRAM	      = ik.exe
 
 
 # Define all C++ source files here

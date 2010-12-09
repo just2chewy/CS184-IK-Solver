@@ -4,6 +4,11 @@ Platform: Windows
 Location of Source Code: cs184-ac/as6 (cs184-ac submitted the source code. cs184-cp submitted the README only)
 
 Compile + Running Instructions:
-- The files should be compiled using "make -f makefile.cygwin", which will produce an executable called glut_example. You can run the program by issuing the command "./bezier.exe teapot.bez 0.01 -a", using the appropriate parameters.
-- Uniform subdivision is performed using the command "./bezier.exe filename subdivision -u". For example, "./bezier.exe teapot.bez 0.1 -u" will run the program on the teapot.bez input file, with a step size of 0.1. The "-u" parameter signifies that the program should apply uniform subdivision.
-- Adaptive subdivision is performed using the command "./bezier.exe filename subdivision -a". For example, "./bezier.exe teapot.bez 0.1 -a" will run the program on the teapot.bez input file, with an allowed error of 0.1. The "-a" parameter signifies that the program should apply adaptive subdivision.
+- The files should be compiled using "make -f makefile.cygwin", which will produce an executable called ik.exe. 
+- This executable has to be run with an input file that describes the bones and path
+- Look at the example paths submitted (line.txt, eight.txt, circle.txt, 3D.txt) to follow how to create correct input files.
+- A general input file is written as:
+x_translate_value y_translate_value z_coordinate_value
+type_of_path
+path_specific_values
+bone_positions bone_colors
