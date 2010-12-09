@@ -516,7 +516,7 @@ void myFrameMove() {
 	//Change target location
 	
 	//KEVIN CHANGE THE 1.0F here to change the initial delay. IE, make value 0 for no delay.
-	if(totalTime > 1.0f) {
+	if(totalTime > 5.0f) {
 		should_move = true;
 		totalTime = 0.0f;
 	}
